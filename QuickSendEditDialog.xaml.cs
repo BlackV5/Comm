@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace WpfApp1
+namespace Comm
 {
     public partial class QuickSendEditDialog : Window
     {

@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
 
-namespace WpfApp1
+namespace Comm
 {
     public partial class MainWindow : Window
     {

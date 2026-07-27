@@ -7,7 +7,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{B2125EC6-8039-4219-9981-E1B2C4063A0B}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>WpfApp1</RootNamespace>
+    <RootNamespace>Comm</RootNamespace>
     <AssemblyName>串口调试工具</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -57,7 +57,7 @@
     <ManifestCertificateThumbprint>9295980B01D77F0685C4E017E41D7741DF55F202</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>WpfApp1_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>Comm_TemporaryKey.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <GenerateManifests>true</GenerateManifests>

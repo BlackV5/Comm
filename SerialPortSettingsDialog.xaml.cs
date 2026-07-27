@@ -2,7 +2,7 @@ using System;
 using System.IO.Ports;
 using System.Windows;
 
-namespace WpfApp1
+namespace Comm
 {
     public partial class SerialPortSettingsDialog : Window
     {

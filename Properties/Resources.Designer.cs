@@ -9,7 +9,7 @@
 //------------------------------------------------------------------------------
 
 
-namespace WpfApp1.Properties
+namespace Comm.Properties
 {
     /// <summary>
     ///   强类型资源类，用于查找本地化字符串等。
@@ -43,7 +43,7 @@ namespace WpfApp1.Properties
             {
                 if ((resourceMan == null))
                 {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("WpfApp1.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Comm.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
