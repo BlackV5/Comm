@@ -38,7 +38,7 @@ jobs:
         Configuration: ${{ matrix.configuration }}
 
     - name: Build the application
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform="Any CPU"
+      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false
       env:
         Configuration: ${{ matrix.configuration }}
 
