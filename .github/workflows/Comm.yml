@@ -40,18 +40,16 @@ jobs:
 
     # Restore
     - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
+      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=Release
       env:
         Solution_Name: Comm.sln
-        Configuration: Release
 
-    # 构建并生成日志
+    # 构建并生成日志（注意用引号包裹 /flp 参数）
     - name: Build the application
       run: |
-        msbuild $env:Solution_Name /p:Configuration=Release /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false /flp:LogFile=build.log;Verbosity=detailed
+        msbuild $env:Solution_Name /p:Configuration=Release /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false "/flp:LogFile=build.log;Verbosity=detailed"
       env:
         Solution_Name: Comm.sln
-        Configuration: Release
 
     # ========== 产物1：仅 EXE 文件（用户下载） ==========
     - name: Package EXE only
@@ -83,7 +81,9 @@ jobs:
         New-Item -ItemType Directory -Force -Path "publish\logs"
 
         # 复制构建日志
-        Copy-Item -Path "build.log" -Destination "publish\logs\" -Force
+        if (Test-Path "build.log") {
+          Copy-Item -Path "build.log" -Destination "publish\logs\" -Force
+        }
 
         # 生成构建信息文件
         @"
