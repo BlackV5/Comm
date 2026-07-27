@@ -3,20 +3,14 @@ name: .NET Core Desktop
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main" ]
 
 jobs:
   build:
-    strategy:
-      matrix:
-        configuration: [Release]
-
     runs-on: windows-latest
-
-    env:
-      Solution_Name: Comm.sln
-      Project_Path: Comm.csproj
 
     steps:
     - name: Checkout
@@ -32,49 +26,106 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
+    # 获取版本号（如果是标签触发）
+    - name: Get version
+      id: get_version
+      run: |
+        if ($env:GITHUB_REF -match "refs/tags/v(.+)") {
+          $version = $matches[1]
+        } else {
+          $version = "latest"
+        }
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
+    # Restore
     - name: Restore the application
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
       env:
-        Configuration: ${{ matrix.configuration }}
+        Solution_Name: Comm.sln
+        Configuration: Release
 
+    # 构建并生成日志
     - name: Build the application
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false
-      env:
-        Configuration: ${{ matrix.configuration }}
-
-    # 验证构建输出
-    - name: Verify build output
       run: |
-        Write-Host "Checking build output directory..."
-        Get-ChildItem -Path "${{ github.workspace }}\bin\Release\" -Recurse -File
-        Write-Host ""
+        msbuild $env:Solution_Name /p:Configuration=Release /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false /flp:LogFile=build.log;Verbosity=detailed
+      env:
+        Solution_Name: Comm.sln
+        Configuration: Release
 
-        $exeFiles = Get-ChildItem -Path "${{ github.workspace }}\bin\Release\" -Filter "*.exe" -Recurse
-        if ($exeFiles.Count -gt 0) {
-          Write-Host "✅ Found $($exeFiles.Count) EXE file(s):"
-          $exeFiles | ForEach-Object { Write-Host "  - $($_.FullName)" }
+    # ========== 产物1：仅 EXE 文件（用户下载） ==========
+    - name: Package EXE only
+      run: |
+        New-Item -ItemType Directory -Force -Path "publish\exe"
+        Copy-Item -Path "bin\Release\*.exe" -Destination "publish\exe\" -Force
+
+        # 如果是标签版本，重命名文件
+        $version = "${{ steps.get_version.outputs.version }}"
+        if ($version -ne "latest") {
+          $exeFiles = Get-ChildItem -Path "publish\exe\" -Filter "*.exe"
+          foreach ($file in $exeFiles) {
+            $newName = "Comm_v$version.exe"
+            Rename-Item -Path $file.FullName -NewName $newName
+          }
         } else {
-          Write-Host "❌ No EXE files found in bin\Release\"
-          Write-Host "Directory contents:"
-          Get-ChildItem -Path "${{ github.workspace }}\bin\Release\" -Recurse
-          exit 1
+          # 最新版重命名为 Comm.exe
+          $exeFiles = Get-ChildItem -Path "publish\exe\" -Filter "*.exe"
+          foreach ($file in $exeFiles) {
+            $newName = "Comm.exe"
+            Rename-Item -Path $file.FullName -NewName $newName
+          }
         }
       shell: pwsh
 
-    # 上传构建产物
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: 串口调试工具
-        path: |
-          ${{ github.workspace }}\bin\Release\*.exe
-          ${{ github.workspace }}\bin\Release\*.pdb
-        if-no-files-found: error  # 如果没有找到文件则报错
+    # ========== 产物2：构建日志（开发者调试） ==========
+    - name: Package build logs
+      run: |
+        New-Item -ItemType Directory -Force -Path "publish\logs"
 
-    # 可选：也上传整个 Release 文件夹（包含所有依赖）
-    - name: Upload full release folder
+        # 复制构建日志
+        Copy-Item -Path "build.log" -Destination "publish\logs\" -Force
+
+        # 生成构建信息文件
+        @"
+        Build Information
+        ==================
+        Build Time: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        Version: ${{ steps.get_version.outputs.version }}
+        Commit SHA: ${{ github.sha }}
+        Branch: ${{ github.ref_name }}
+        Triggered by: ${{ github.event_name }}
+        Runner: ${{ runner.os }}
+        "@ | Out-File -FilePath "publish\logs\build_info.txt" -Encoding UTF8
+
+        # 压缩完整的 Release 输出（用于排查问题）
+        Compress-Archive -Path "bin\Release\*" -DestinationPath "publish\logs\release_output.zip" -Force
+      shell: pwsh
+
+    # ========== 上传产物1：用户版 EXE ==========
+    - name: Upload EXE artifact
       uses: actions/upload-artifact@v4
       with:
-        name: 串口调试工具-完整
-        path: ${{ github.workspace }}\bin\Release\
-        if-no-files-found: warn
+        name: Comm_v${{ steps.get_version.outputs.version }}
+        path: publish\exe\*.exe
+        if-no-files-found: error
+
+    # ========== 上传产物2：构建日志包 ==========
+    - name: Upload build logs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Comm_BuildLogs_v${{ steps.get_version.outputs.version }}
+        path: publish\logs\
+        if-no-files-found: error
+
+    # ========== 如果是 Release 标签，自动发布到 Releases ==========
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          publish\exe\*.exe
+        generate_release_notes: true
+        name: Comm v${{ steps.get_version.outputs.version }}
+        tag_name: ${{ github.ref_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
