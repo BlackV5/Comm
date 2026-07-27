@@ -6,6 +6,10 @@ on:
       - 'v*'
       - 'V*'
 
+# 关键：明确授予写入权限
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -73,7 +77,7 @@ jobs:
         path: publish\*.exe
         if-no-files-found: error
 
-    # 使用 softprops/action-gh-release（更稳定，权限需求更低）
+    # 创建 Release 并上传 EXE
     - name: Create Release and Upload EXE
       uses: softprops/action-gh-release@v1
       with:
