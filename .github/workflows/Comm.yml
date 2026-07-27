@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'V*'
 
 jobs:
   build:
@@ -18,12 +19,18 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
-    # 获取版本号
+    # 获取版本号（支持 V 和 v）
     - name: Get version
       id: get_version
       run: |
-        $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
+        $ref = $env:GITHUB_REF
+        if ($ref -match "refs/tags/[Vv](.+)") {
+          $version = $matches[1]
+        } else {
+          $version = "latest"
+        }
         echo "version=$version" >> $env:GITHUB_OUTPUT
+        Write-Host "📌 版本号: $version"
       shell: pwsh
 
     # Restore
@@ -34,55 +41,48 @@ jobs:
     - name: Build
       run: msbuild Comm.sln /p:Configuration=Release /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false
 
-    # 提取并重命名 EXE
-    - name: Extract EXE
+    # 打包 EXE
+    - name: Package EXE
       run: |
         New-Item -ItemType Directory -Force -Path "publish"
         Copy-Item -Path "bin\Release\*.exe" -Destination "publish\" -Force
 
         $version = "${{ steps.get_version.outputs.version }}"
-        $exeFile = Get-ChildItem -Path "publish\" -Filter "*.exe" | Select-Object -First 1
-        if ($exeFile) {
-          $newName = "Comm_v$version.exe"
-          Rename-Item -Path $exeFile.FullName -NewName $newName
-          Write-Host "✅ EXE 已提取: $newName"
+        if ($version -ne "latest") {
+          $exeFile = Get-ChildItem -Path "publish\" -Filter "*.exe" | Select-Object -First 1
+          if ($exeFile) {
+            $newName = "Comm_v$version.exe"
+            Rename-Item -Path $exeFile.FullName -NewName $newName
+            Write-Host "✅ 重命名为: $newName"
+          }
         }
       shell: pwsh
 
     # 验证文件
-    - name: Verify EXE
+    - name: List files
       run: |
+        Write-Host "📁 publish 目录内容:"
         Get-ChildItem -Path "publish\" -Recurse
-        if (Test-Path "publish\*.exe") {
-          Write-Host "✅ EXE 文件存在"
-        } else {
-          Write-Host "❌ 未找到 EXE 文件"
-          exit 1
-        }
       shell: pwsh
 
-    # 使用 GitHub CLI 上传到 Release
-    - name: Upload to Release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # 查看文件
-        Get-ChildItem -Path "publish\"
+    # 上传到 Artifacts（用于调试）
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Comm_v${{ steps.get_version.outputs.version }}
+        path: publish\*.exe
+        if-no-files-found: error
 
-        # 获取 Release ID（基于当前标签）
-        $tag = "${{ github.ref_name }}"
-        $releaseId = gh api repos/${{ github.repository }}/releases/tags/$tag --jq '.id'
-
-        if ($releaseId) {
-          Write-Host "找到 Release ID: $releaseId"
-          # 上传 EXE 文件
-          gh api -X POST repos/${{ github.repository }}/releases/$releaseId/assets `
-            -f name="Comm_$tag.exe" `
-            -f label="Comm $tag" `
-            --input "publish\Comm_$tag.exe"
-          Write-Host "✅ 上传成功!"
-        } else {
-          Write-Host "❌ 未找到 Release，请先创建 Release"
-          exit 1
-        }
-      shell: pwsh
+    # 创建 Release 并上传 EXE（方案一：ncipollo/release-action）
+    - name: Create Release and Upload EXE
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "publish/*.exe"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        generateReleaseNotes: true
+        name: Comm v${{ steps.get_version.outputs.version }}
+        tag: ${{ steps.get_version.outputs.version }}
+        allowUpdates: true
+        replacesArtifacts: true
+        draft: false
+        prerelease: false
