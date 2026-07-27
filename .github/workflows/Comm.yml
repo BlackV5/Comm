@@ -2,11 +2,8 @@ name: .NET Core Desktop
 
 on:
   push:
-    branches: [ "main" ]
     tags:
-      - 'v*'
-  pull_request:
-    branches: [ "main" ]
+      - 'v*'  # 只监听标签推送
 
 jobs:
   build:
@@ -25,11 +22,7 @@ jobs:
     - name: Get version
       id: get_version
       run: |
-        if ($env:GITHUB_REF -match "refs/tags/v(.+)") {
-          $version = $matches[1]
-        } else {
-          $version = "latest"
-        }
+        $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
         echo "version=$version" >> $env:GITHUB_OUTPUT
       shell: pwsh
 
@@ -41,36 +34,46 @@ jobs:
     - name: Build
       run: msbuild Comm.sln /p:Configuration=Release /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false
 
-    # 打包 EXE
-    - name: Package EXE
+    # 提取并重命名 EXE
+    - name: Extract EXE
       run: |
+        # 创建输出目录
         New-Item -ItemType Directory -Force -Path "publish"
+
+        # 复制 EXE 文件
         Copy-Item -Path "bin\Release\*.exe" -Destination "publish\" -Force
 
+        # 获取版本号
         $version = "${{ steps.get_version.outputs.version }}"
-        if ($version -ne "latest") {
-          $exeFile = Get-ChildItem -Path "publish\" -Filter "*.exe" | Select-Object -First 1
-          if ($exeFile) {
-            $newName = "Comm_v$version.exe"
-            Rename-Item -Path $exeFile.FullName -NewName $newName
-          }
+
+        # 重命名为 Comm_vX.X.X.exe
+        $exeFile = Get-ChildItem -Path "publish\" -Filter "*.exe" | Select-Object -First 1
+        if ($exeFile) {
+          $newName = "Comm_v$version.exe"
+          Rename-Item -Path $exeFile.FullName -NewName $newName
+          Write-Host "✅ EXE 已提取: $newName"
         }
       shell: pwsh
 
-    # 上传到 Artifacts（用于调试）
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Comm_v${{ steps.get_version.outputs.version }}
-        path: publish\*.exe
-        if-no-files-found: error
+    # 验证文件是否存在
+    - name: Verify EXE
+      run: |
+        if (Test-Path "publish\*.exe") {
+          Write-Host "✅ EXE 文件存在"
+          Get-ChildItem "publish\*.exe"
+        } else {
+          Write-Host "❌ 未找到 EXE 文件"
+          exit 1
+        }
+      shell: pwsh
 
-    # 上传到 Release（重要：这是关键步骤）
-    - name: Upload to Release
-      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+    # 自动创建 Release 并上传 EXE
+    - name: Create Release and Upload EXE
       uses: softprops/action-gh-release@v2
       with:
         files: publish\*.exe
         generate_release_notes: true
+        name: Comm v${{ steps.get_version.outputs.version }}
+        tag_name: ${{ github.ref_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
