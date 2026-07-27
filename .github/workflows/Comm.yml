@@ -10,13 +10,13 @@ jobs:
   build:
     strategy:
       matrix:
-        configuration: [Release]       # 只构建 Release 版本
+        configuration: [Release]
 
     runs-on: windows-latest
 
     env:
-      Solution_Name: Comm.sln          # 修改为你的 sln 文件名，例如 WpfApp1.sln
-      Project_Path:  Comm.csproj       # 修改为你的项目文件，例如 WpfApp1/WpfApp1.csproj
+      Solution_Name: Comm.sln
+      Project_Path: Comm.csproj
 
     steps:
     - name: Checkout
@@ -27,7 +27,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '1.0.x'  # 根据你的项目目标框架调整，例如 '6.0.x'
+        dotnet-version: '1.0.x'
 
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
@@ -42,10 +42,39 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    # 上传生成的 exe 文件作为构建产物（Artifact）
+    # 验证构建输出
+    - name: Verify build output
+      run: |
+        Write-Host "Checking build output directory..."
+        Get-ChildItem -Path "${{ github.workspace }}\bin\Release\" -Recurse -File
+        Write-Host ""
+
+        $exeFiles = Get-ChildItem -Path "${{ github.workspace }}\bin\Release\" -Filter "*.exe" -Recurse
+        if ($exeFiles.Count -gt 0) {
+          Write-Host "✅ Found $($exeFiles.Count) EXE file(s):"
+          $exeFiles | ForEach-Object { Write-Host "  - $($_.FullName)" }
+        } else {
+          Write-Host "❌ No EXE files found in bin\Release\"
+          Write-Host "Directory contents:"
+          Get-ChildItem -Path "${{ github.workspace }}\bin\Release\" -Recurse
+          exit 1
+        }
+      shell: pwsh
+
+    # 上传构建产物
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: 串口调试工具    # 给产物起的名字，方便查找
+        name: 串口调试工具
         path: |
-          ${{ github.workspace }}/Comm/bin/Release/*.exe   # 修改为你的项目名，例如 WpfApp1/bin/Release/*.exe
+          ${{ github.workspace }}\bin\Release\*.exe
+          ${{ github.workspace }}\bin\Release\*.pdb
+        if-no-files-found: error  # 如果没有找到文件则报错
+
+    # 可选：也上传整个 Release 文件夹（包含所有依赖）
+    - name: Upload full release folder
+      uses: actions/upload-artifact@v4
+      with:
+        name: 串口调试工具-完整
+        path: ${{ github.workspace }}\bin\Release\
+        if-no-files-found: warn
