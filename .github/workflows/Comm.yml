@@ -73,16 +73,13 @@ jobs:
         path: publish\*.exe
         if-no-files-found: error
 
-    # 创建 Release 并上传 EXE（方案一：ncipollo/release-action）
+    # 使用 softprops/action-gh-release（更稳定，权限需求更低）
     - name: Create Release and Upload EXE
-      uses: ncipollo/release-action@v1
+      uses: softprops/action-gh-release@v1
       with:
-        artifacts: "publish/*.exe"
-        token: ${{ secrets.GITHUB_TOKEN }}
-        generateReleaseNotes: true
+        files: publish/*.exe
+        generate_release_notes: true
         name: Comm v${{ steps.get_version.outputs.version }}
-        tag: ${{ steps.get_version.outputs.version }}
-        allowUpdates: true
-        replacesArtifacts: true
-        draft: false
-        prerelease: false
+        tag_name: ${{ steps.get_version.outputs.version }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
