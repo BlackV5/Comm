@@ -53,7 +53,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' != 'true'">
     <ManifestCertificateThumbprint>9295980B01D77F0685C4E017E41D7741DF55F202</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
