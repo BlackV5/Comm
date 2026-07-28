@@ -145,7 +145,7 @@ namespace Comm.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\"8\"")]
+        [global::System.Configuration.DefaultSettingValueAttribute("8")]
         public string LastDataBits {
             get {
                 return ((string)(this["LastDataBits"]));
@@ -157,7 +157,7 @@ namespace Comm.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\"1\"")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
         public string LastStopBits {
             get {
                 return ((string)(this["LastStopBits"]));
@@ -169,7 +169,7 @@ namespace Comm.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\"无\"")]
+        [global::System.Configuration.DefaultSettingValueAttribute("无")]
         public string LastParity {
             get {
                 return ((string)(this["LastParity"]));
