@@ -28,8 +28,8 @@ jobs:
       id: get_version
       run: |
         $ref = $env:GITHUB_REF
-        if ($ref -match "refs/tags/[Vv](.+)") {
-          $version = $matches[1]
+        if ($ref -match "refs/tags/([Vv].+)") {
+          $version = $matches[1]   # 保留 v 前缀
         } else {
           $version = "latest"
         }
