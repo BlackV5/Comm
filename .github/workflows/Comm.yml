@@ -28,8 +28,8 @@ jobs:
       id: get_version
       run: |
         $ref = $env:GITHUB_REF
-        if ($ref -match "refs/tags/([Vv].+)") {
-          $version = $matches[1]   # 保留 v 前缀
+        if ($ref -match "refs/tags/(v.+)") {
+          $version = $matches[1]   # 保留 v 前缀，如 "v1.0.9"
         } else {
           $version = "latest"
         }
@@ -83,7 +83,7 @@ jobs:
       with:
         files: publish/*.exe
         generate_release_notes: true
-        name: Comm v${{ steps.get_version.outputs.version }}
+        name: Comm ${{ steps.get_version.outputs.version }}
         tag_name: ${{ steps.get_version.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
