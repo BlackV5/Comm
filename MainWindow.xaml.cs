@@ -141,19 +141,24 @@ namespace Comm
             // 波特率选项
             this.comboBaud.Items.Clear();
             int[] baudRates = { 300, 600, 1200, 2400, 4800, 9600, 14400, 19200,
-                                28800, 38400, 57600, 115200, 128000, 230400, 256000, 460800, 921600 };
+                        28800, 38400, 57600, 115200, 128000, 230400, 256000, 460800, 921600 };
             foreach (int baud in baudRates)
                 this.comboBaud.Items.Add(baud.ToString());
 
-            // 恢复保存的设置
+            // 恢复保存的波特率
             string lastBaud = Properties.Settings.Default.LastBaudRate;
             int baudIndex = this.comboBaud.Items.IndexOf(lastBaud);
             this.comboBaud.SelectedIndex = baudIndex >= 0 ? baudIndex : 6;
 
-            // 恢复隐藏参数
-            currentDataBits = Properties.Settings.Default.LastDataBits ?? "8";
-            currentStopBits = Properties.Settings.Default.LastStopBits ?? "1";
-            currentParity = Properties.Settings.Default.LastParity ?? "无";
+            // 从 Settings 加载并清理引号
+            currentDataBits = CleanString(Properties.Settings.Default.LastDataBits);
+            currentStopBits = CleanString(Properties.Settings.Default.LastStopBits);
+            currentParity = CleanString(Properties.Settings.Default.LastParity);
+
+            // 如果为空则使用默认值
+            if (string.IsNullOrEmpty(currentDataBits)) currentDataBits = "8";
+            if (string.IsNullOrEmpty(currentStopBits)) currentStopBits = "1";
+            if (string.IsNullOrEmpty(currentParity)) currentParity = "无";
 
             this.chkHexSend.IsChecked = Properties.Settings.Default.LastHexSend;
 
@@ -254,17 +259,25 @@ namespace Comm
         {
             if (this.serialPort1.IsOpen)
             {
-                this.serialPort1.Close();
-                this.btnOpen.Content = "打开串口";
-                this.comboPort.IsEnabled = true;
-                this.comboBaud.IsEnabled = true;
-                this.btnMoreSettings.IsEnabled = true;
-                this.btnRefreshPorts.IsEnabled = true;
-                this.btnSend.IsEnabled = false;
-                this.textBoxSend.IsEnabled = false;
-                AppendReceive("串口已关闭");
-                UpdateStatus($"已关闭 | {this.comboBaud.Text}bps, {currentDataBits}数据位, {currentStopBits}停止位, {currentParity}");
-                SaveSerialSettings();
+                try
+                {
+                    this.serialPort1.Close();
+                    this.btnOpen.Content = "打开串口";
+                    this.comboPort.IsEnabled = true;
+                    this.comboBaud.IsEnabled = true;
+                    this.btnMoreSettings.IsEnabled = true;
+                    this.btnRefreshPorts.IsEnabled = true;
+                    this.btnSend.IsEnabled = false;
+                    this.textBoxSend.IsEnabled = false;
+                    AppendReceive("串口已关闭");
+                    UpdateStatus($"已关闭 | {this.comboBaud.Text}bps, {currentDataBits}数据位, {currentStopBits}停止位, {currentParity}");
+                    SaveSerialSettings();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"关闭串口失败：{ex.Message}", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             else
             {
@@ -277,14 +290,25 @@ namespace Comm
                         return;
                     }
 
-                    // 从 ComboBox 读取波特率，从隐藏变量读取其他参数
+                    // 清理参数中的引号
+                    string cleanDataBits = CleanString(currentDataBits);
+                    string cleanStopBits = CleanString(currentStopBits);
+                    string cleanParity = CleanString(currentParity);
+
+                    // 如果清理后为空，设置默认值
+                    if (string.IsNullOrEmpty(cleanDataBits)) cleanDataBits = "8";
+                    if (string.IsNullOrEmpty(cleanStopBits)) cleanStopBits = "1";
+                    if (string.IsNullOrEmpty(cleanParity)) cleanParity = "无";
+
+                    // 设置串口参数
                     this.serialPort1.PortName = this.comboPort.Text;
                     this.serialPort1.BaudRate = int.Parse(this.comboBaud.Text);
-                    this.serialPort1.DataBits = int.Parse(currentDataBits);
-                    this.serialPort1.StopBits = GetStopBits(currentStopBits);
-                    this.serialPort1.Parity = GetParity(currentParity);
+                    this.serialPort1.DataBits = int.Parse(cleanDataBits);
+                    this.serialPort1.StopBits = GetStopBits(cleanStopBits);
+                    this.serialPort1.Parity = GetParity(cleanParity);
 
                     this.serialPort1.Open();
+
                     this.btnOpen.Content = "关闭串口";
                     this.comboPort.IsEnabled = false;
                     this.comboBaud.IsEnabled = false;
@@ -300,13 +324,13 @@ namespace Comm
                     this.labSendCount.Text = "0";
 
                     AppendReceive("串口已打开：" + this.comboPort.Text);
-                    AppendReceive($"参数：{this.comboBaud.Text}bps {currentDataBits}数据位 {currentStopBits}停止位 {currentParity}");
-                    UpdateStatus($"已打开：{this.comboPort.Text} | {this.comboBaud.Text}bps, {currentDataBits}数据位, {currentStopBits}停止位, {currentParity}");
+                    AppendReceive($"参数：{this.comboBaud.Text}bps {cleanDataBits}数据位 {cleanStopBits}停止位 {cleanParity}");
+                    UpdateStatus($"已打开：{this.comboPort.Text} | {this.comboBaud.Text}bps, {cleanDataBits}数据位, {cleanStopBits}停止位, {cleanParity}");
                     SaveSerialSettings();
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("打开串口失败：" + ex.Message, "错误",
+                    MessageBox.Show($"打开串口失败：{ex.Message}\n\n请检查串口参数是否正确！", "错误",
                         MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -591,6 +615,13 @@ namespace Comm
                     e.Handled = true;
                 }
             }
+        }
+
+        // ========== 清理字符串中的引号 ==========
+        private string CleanString(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+            return input.Trim('"').Trim('\'');
         }
     }
 }
