@@ -3,7 +3,7 @@
 [![.NET Core Desktop](https://github.com/BlackV5/Comm/actions/workflows/Comm.yml/badge.svg)](https://github.com/BlackV5/Comm/actions/workflows/Comm.yml)
 [![GitHub release](https://img.shields.io/github/release/BlackV5/Comm.svg)](https://github.com/BlackV5/Comm/releases)
 [![GitHub downloads](https://img.shields.io/github/downloads/BlackV5/Comm/total.svg)](https://github.com/BlackV5/Comm/releases)
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub license](https://img.shields.io/github/license/BlackV5/Comm)](LICENSE)
 
 Comm 是一个基于 .NET Framework 4.7.2 开发的 WPF 串口调试工具，提供了简洁直观的串口通信调试界面，适用于嵌入式开发、硬件调试等场景。
 
