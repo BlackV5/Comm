@@ -6,7 +6,6 @@ on:
       - 'v*'
       - 'V*'
 
-# 关键：明确授予写入权限
 permissions:
   contents: write
 
@@ -23,13 +22,13 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
-    # 获取版本号（支持 V 和 v）
+    # 获取版本号（去掉 v 前缀）
     - name: Get version
       id: get_version
       run: |
         $ref = $env:GITHUB_REF
-        if ($ref -match "refs/tags/(v.+)") {
-          $version = $matches[1]   # 保留 v 前缀，如 "v1.0.9"
+        if ($ref -match "refs/tags/[Vv](.+)") {
+          $version = $matches[1]   # 去掉 v 前缀，得到 "1.0.9"
         } else {
           $version = "latest"
         }
@@ -37,11 +36,9 @@ jobs:
         Write-Host "📌 版本号: $version"
       shell: pwsh
 
-    # Restore
     - name: Restore
       run: msbuild Comm.sln /t:Restore /p:Configuration=Release
 
-    # 构建
     - name: Build
       run: msbuild Comm.sln /p:Configuration=Release /p:Platform="Any CPU" /p:SignManifests=false /p:GenerateManifests=false /p:SignAssembly=false
 
@@ -62,14 +59,12 @@ jobs:
         }
       shell: pwsh
 
-    # 验证文件
     - name: List files
       run: |
         Write-Host "📁 publish 目录内容:"
         Get-ChildItem -Path "publish\" -Recurse
       shell: pwsh
 
-    # 上传到 Artifacts（用于调试）
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -77,13 +72,12 @@ jobs:
         path: publish\*.exe
         if-no-files-found: error
 
-    # 创建 Release 并上传 EXE
     - name: Create Release and Upload EXE
       uses: softprops/action-gh-release@v1
       with:
         files: publish/*.exe
         generate_release_notes: true
-        name: Comm ${{ steps.get_version.outputs.version }}
+        name: Comm v${{ steps.get_version.outputs.version }}
         tag_name: ${{ steps.get_version.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
