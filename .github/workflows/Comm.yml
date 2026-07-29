@@ -22,19 +22,22 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
-    # 获取版本号（去掉 v 前缀，用于文件名和显示）
+    # 获取版本号
     - name: Get version
       id: get_version
       run: |
         $ref = $env:GITHUB_REF
         if ($ref -match "refs/tags/[Vv](.+)") {
           $version = $matches[1]   # 得到 "1.0.9"
+          $tag = "v$version"       # 得到 "v1.0.9"
         } else {
           $version = "latest"
+          $tag = "latest"
         }
         echo "version=$version" >> $env:GITHUB_OUTPUT
-        echo "tag=v$version" >> $env:GITHUB_OUTPUT   # 额外输出带 v 的标签名
+        echo "tag=$tag" >> $env:GITHUB_OUTPUT
         Write-Host "📌 版本号: $version"
+        Write-Host "🏷️ 标签名: $tag"
       shell: pwsh
 
     - name: Restore
@@ -73,13 +76,12 @@ jobs:
         path: publish\*.exe
         if-no-files-found: error
 
-    # 创建 Release 并上传 EXE
     - name: Create Release and Upload EXE
       uses: softprops/action-gh-release@v1
       with:
         files: publish/*.exe
         generate_release_notes: true
         name: Comm v${{ steps.get_version.outputs.version }}
-        tag_name: ${{ steps.get_version.outputs.tag }}   # 使用带 v 的标签名
+        tag_name: ${{ steps.get_version.outputs.tag }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
